@@ -2,14 +2,14 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "usuario/mi-app-flask"
+        IMAGE_NAME = "carlosfonsecam/mi-app-flask"
         DOCKERHUB_CREDENTIALS = "dockerhub-creds"
     }
 
     stages {
         stage('Clonar repo') {
             steps {
-                git url: 'https://github.com/usuario/flask-docker-app.git'
+                git url: 'https://github.com/CarlosFonsecaM/flask-docker-app.git'
             }
         }
 
