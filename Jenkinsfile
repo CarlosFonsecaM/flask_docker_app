@@ -1,57 +1,53 @@
 pipeline {
     agent any
-
-    environment {
-        IMAGE_NAME = "carlosfonsecam/mi-app-flask"
+    
+    environment{
+        IMAGE_NAME = "carlosfonsecam/flask_docker_app"
         DOCKERHUB_CREDENTIALS = "dockerhub-creds"
     }
-
-    stages {
-        stage('Clonar repo') {
-            steps {
-                git url: 'https://github.com/CarlosFonsecaM/flask-docker-app.git'
-            }
-        }
-
-        stage('Construir imagen Docker') {
-            steps {
-                script {
-                    docker.build("${IMAGE_NAME}")
+    
+    stages{
+        stage("Limpiar Workspace"){
+            steps{
+                script{
+                    sh "rm -rf ./*"
                 }
             }
         }
-
-        stage('Probar contenedor') {
-            steps {
-                sh 'docker run -d -p 5000:5000 --name app-prueba ${IMAGE_NAME}'
-                sh 'sleep 5 && curl -f http://localhost:5000 || exit 1'
-                sh 'docker stop app-prueba && docker rm app-prueba'
-            }
-        }
-
-        stage('Publicar en Docker Hub') {
-            when {
-                branch 'main'
-            }
-            steps {
-                script {
-                    docker.withRegistry('', DOCKERHUB_CREDENTIALS) {
-                        docker.image("${IMAGE_NAME}").push('latest')
+        stage("Clonar Repositorio"){
+            steps{
+                withCredentials([usernamePassword(credentialsId: 'GITHUB_CREDENTIALS', usernameVariable: "GITHUB_USERNAME", passwordVariable: "GITHUB_PASSWORD")]) {
+                    script {
+                        sh "git clone https://$GITHUB_USERNAME:$GITHUB_PASSWORD@github.com/CarlosFonsecaM/flask_docker_app.git"
                     }
                 }
             }
         }
-    }
-
-    post {
-        always {
-            sh 'docker system prune -f'
+        
+        stage("Construir imagen Docker"){
+            steps{
+                script{
+                    sh "docker build -t ${IMAGE_NAME} flask_docker_app/"
+                }
+            }
         }
-        failure {
-            echo '❌ Falló el pipeline.'
+        stage("Probar Contenedor"){
+            steps{
+                script{
+                    sh "docker run -d -p 5000:5000 --name app-prueba ${IMAGE_NAME}"
+                    sh "sleep 5 && curl http://localhost:5000"
+                    sh "docker stop app-prueba && docker rm app-prueba"
+                }
+            }
         }
-        success {
-            echo '✅ Pipeline exitoso.'
+        stage("Publicar en DockerHub"){
+            steps{
+                script{
+                        docker.withRegistry('', DOCKERHUB_CREDENTIALS) {
+                            docker.image("${IMAGE_NAME}").push('latest')
+                        }
+                }
+            }
         }
     }
 }
